@@ -1,9 +1,10 @@
 %define 	module	libgmail
 
-Summary:	libgmail . Python binding for Google's Gmail service
+Summary:	libgmail - Python binding for Google's Gmail service
+Summary(pl):	libgmail - wi±zania Pythona do us³ugi Google Gmail
 Name:		python-%{module}
 Version:	0.0.8
-Release:	0.1
+Release:	0.2
 License:	GPL
 Group:		Development/Languages/Python
 Source0:	http://dl.sourceforge.net/%{module}/%{module}-%{version}.tgz
@@ -15,28 +16,36 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 The libgmail project is a pure Python binding to provide access to
 Google's Gmail web-mail service.
 
+%description -l pl
+Projekt libgmail umo¿liwia uzyskanie dostêpu do us³ugi Google Gmail w
+programach pisanych w Pythonie.
+
 %prep
 %setup -q -n %{module}-%{version}
 
 %build
-python -c "import compiler;compiler.compileFile('libgmail.py')"
-python -c "import compiler;compiler.compileFile('constants.py')"
+%{py_comp} .
+%{py_ocomp} .
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -d $RPM_BUILD_ROOT%{py_sitescriptdir}
-install -d $RPM_BUILD_ROOT%{_examplesdir}/%{name}-%{version}
 
-install constants.pyc $RPM_BUILD_ROOT%{py_sitescriptdir}
-install libgmail.pyc $RPM_BUILD_ROOT%{py_sitescriptdir}
+install -d $RPM_BUILD_ROOT{%{py_sitescriptdir},%{_bindir},%{_examplesdir}/%{name}-%{version},%{_datadir}/%{name}}
 
-install demos/* $RPM_BUILD_ROOT%{_examplesdir}/%{name}-%{version}
+install libgmail.py[co] $RPM_BUILD_ROOT%{py_sitescriptdir}
+
+install mkconstants.py $RPM_BUILD_ROOT%{_bindir}
+install constants.py $RPM_BUILD_ROOT%{_datadir}/%{name}
+
+install demos/*.py $RPM_BUILD_ROOT%{_examplesdir}/%{name}-%{version}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc [A-R]*
+%doc ANNOUNCE CHANGELOG README
+%{_bindir}/mkconstants.py
 %{py_sitescriptdir}/*.py[co]
+%{_datadir}/%{name}
 %{_examplesdir}/%{name}-%{version}
