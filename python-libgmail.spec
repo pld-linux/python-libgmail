@@ -11,6 +11,7 @@ Source0:	http://dl.sourceforge.net/%{module}/%{module}-%{version}.tgz
 # Source0-md5:	6bfd82f39b959a6e92fa73fa19ed4eba
 URL:		http://libgmail.sourceforge.net/
 %pyrequires_eq	python-modules
+BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
