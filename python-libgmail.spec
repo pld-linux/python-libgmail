@@ -29,6 +29,7 @@ programach pisanych w Pythonie.
 
 %build
 %{py_comp} .
+%{py_comp} constants.py
 %{py_ocomp} .
 
 %install
@@ -39,7 +40,7 @@ install -d $RPM_BUILD_ROOT{%{py_sitescriptdir},%{_bindir},%{_examplesdir}/%{name
 install libgmail.py[co] $RPM_BUILD_ROOT%{py_sitescriptdir}
 
 install mkconstants.py $RPM_BUILD_ROOT%{_bindir}
-install constants.py $RPM_BUILD_ROOT%{_datadir}/%{name}
+install constants.py[co] $RPM_BUILD_ROOT%{py_sitescriptdir}
 
 install demos/*.py $RPM_BUILD_ROOT%{_examplesdir}/%{name}-%{version}
 
@@ -51,5 +52,4 @@ rm -rf $RPM_BUILD_ROOT
 %doc ANNOUNCE CHANGELOG README
 %{_bindir}/mkconstants.py
 %{py_sitescriptdir}/*.py[co]
-%{_datadir}/%{name}
 %{_examplesdir}/%{name}-%{version}
