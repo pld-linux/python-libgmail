@@ -1,0 +1,16 @@
+--- libgmail.py.orig	2004-10-11 10:13:25.784029216 +0200
++++ libgmail.py	2004-10-11 10:13:27.876711080 +0200
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2.3
++#!/usr/bin/python
+ #
+ # libgmail -- Gmail access via Python
+ #
+--- mkconstants.py.orig	2004-10-11 10:16:07.434454616 +0200
++++ mkconstants.py	2004-10-11 10:16:27.833353512 +0200
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2.3
++#!/usr/bin/python
+ #
+ # mkconstants.py -- Extract constants from Gmail Javascript code
+ #
