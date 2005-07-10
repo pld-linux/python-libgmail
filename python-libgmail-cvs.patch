@@ -1,0 +1,529 @@
+diff -U 3 -H -d -r -N -- libgmail-0.0.8.orig/constants.py libgmail-0.0.8/constants.py
+--- libgmail-0.0.8.orig/constants.py	2004-08-10 15:18:43.000000000 +0200
++++ libgmail-0.0.8/constants.py	2005-07-11 00:56:08.000000000 +0200
+@@ -1,6 +1,8 @@
+ #
+ # Generated file -- DO NOT EDIT
+ #
++# Note: This file is now edited! 2005-04-25
++#
+ # constants.py -- Useful constants extracted from Gmail Javascript code
+ #
+ # Source version: 44f09303f2d4f76f
+@@ -46,8 +48,8 @@
+ TS_TOTAL = 2
+ TS_ESTIMATES = 3
+ TS_TITLE = 4
+-TS_TIMESTAMP = 5
+-TS_TOTAL_MSGS = 6
++TS_TIMESTAMP = 5 + 1
++TS_TOTAL_MSGS = 6 + 1
+ T_THREADID = 0
+ T_UNREAD = 1
+ T_STAR = 2
+@@ -76,19 +78,20 @@
+ MI_STAR = 3
+ MI_REFMSG = 4
+ MI_AUTHORNAME = 5
+-MI_AUTHOREMAIL = 6
+-MI_MINIHDRHTML = 7
+-MI_DATEHTML = 8
+-MI_TO = 9
+-MI_CC = 10
+-MI_BCC = 11
+-MI_REPLYTO = 12
+-MI_DATE = 13
+-MI_SUBJECT = 14
+-MI_SNIPPETHTML = 15
+-MI_ATTACHINFO = 16
+-MI_KNOWNAUTHOR = 17
+-MI_PHISHWARNING = 18
++MI_AUTHORFIRSTNAME = 6 # ? -- Name supplied by rj
++MI_AUTHOREMAIL = 6 + 1
++MI_MINIHDRHTML = 7 + 1
++MI_DATEHTML = 8 + 1
++MI_TO = 9 + 1
++MI_CC = 10 + 1
++MI_BCC = 11 + 1
++MI_REPLYTO = 12 + 1
++MI_DATE = 13 + 1
++MI_SUBJECT = 14 + 1
++MI_SNIPPETHTML = 15 + 1
++MI_ATTACHINFO = 16 + 1
++MI_KNOWNAUTHOR = 17 + 1
++MI_PHISHWARNING = 18 + 1
+ A_ID = 0
+ A_FILENAME = 1
+ A_MIMETYPE = 2
+diff -U 3 -H -d -r -N -- libgmail-0.0.8.orig/libgmail.py libgmail-0.0.8/libgmail.py
+--- libgmail-0.0.8.orig/libgmail.py	2005-07-11 01:39:40.000000000 +0200
++++ libgmail-0.0.8/libgmail.py	2005-07-09 16:06:27.000000000 +0200
+@@ -1,8 +1,8 @@
+-#!/usr/bin/python
++#!/usr/bin/python2.3
+ #
+ # libgmail -- Gmail access via Python
+ #
+-# Version: 0.0.8 (23 August 2004)
++# Version: 0.0.9 (XX October 2004)
+ #
+ # Author: follower@myrealbox.com
+ #
+@@ -30,6 +30,7 @@
+ 
+ from constants import *
+ 
++import os
+ import re
+ import urllib
+ import urllib2
+@@ -50,6 +51,14 @@
+                     U_ALL_SEARCH, U_DRAFTS_SEARCH,
+                     U_SENT_SEARCH, U_SPAM_SEARCH]
+ 
++# Constants with names not from the Gmail Javascript:
++# TODO: Move to `constants.py`?
++U_SAVEDRAFT_VIEW = "sd"
++
++D_DRAFTINFO = "di"
++# NOTE: All other DI_* field offsets seem to match the MI_* field offsets
++DI_BODY = 19
++
+ versionWarned = False # If the Javascript version is different have we
+                       # warned about it?
+ 
+@@ -83,7 +92,7 @@
+             # TODO: Parse this better/safer?
+             # TODO: Handle "mb" mail bodies better as they can be anything.
+             if value != "": # Empty strings aren't parsed successfully.
+-                parsedValue = eval(value.replace("\n",""))
++                parsedValue = eval(value.replace("\n","").replace(",,",",None,").replace(",,",",None,")) # Yuck! Need two ",," replaces to handle ",,," overlap. TODO: Tidy this up... TODO: It appears there may have been a change in the number & order of at least the CS_* values, investigate.
+             else:
+                 parsedValue = value
+         except SyntaxError:
+@@ -105,7 +114,7 @@
+ 
+     global versionWarned
+     if itemsDict[D_VERSION] != js_version and not versionWarned:
+-        logging.warning("Live Javascript and constants file versions differ.")
++        logging.debug("Live Javascript and constants file versions differ.")
+         versionWarned = True
+ 
+     return itemsDict
+@@ -227,21 +236,30 @@
+     """
+     """
+ 
+-    def __init__(self, name, pw):
++    def __init__(self, name = "", pw = "", state = None):
+         """
+         """
+-        self.name = name
+-        self._pw = pw
++        # TODO: Change how all this is handled?
++        if name and pw:
++            self.name = name
++            self._pw = pw
++            self._cookieJar = CookieJar()
++        elif state:
++            # TODO: Check for stale state cookies?
++            self.name, self._cookieJar = state.state
++        else:
++            raise ValueError("GmailAccount must be instantiated with " \
++                             "either GmailSessionState object or name " \
++                             "and password.")
+ 
+         self._cachedQuotaInfo = None
+         self._cachedLabelNames = None
+         
+-        self._cookieJar = CookieJar()
+-
+ 
+     def login(self):
+         """
+         """
++        # TODO: Throw exception if we were instantiated with state?
+         data = urllib.urlencode({'continue': URL_GMAIL,
+                                  'service': 'mail',
+                                  'Email': self.name,
+@@ -282,10 +300,7 @@
+         pageData = resp.read()
+ 
+         # Extract cookies here
+-        # NOTE: "SID" & "GV" really only need to be extracted once
+-        #       as they don't seem to change during session.
+-        self._cookieJar.extractCookies(resp, [ACTION_TOKEN_COOKIE,
+-                                              "SID", "GV"])
++        self._cookieJar.extractCookies(resp)
+ 
+         # TODO: Enable logging of page data for debugging purposes?
+ 
+@@ -460,13 +475,22 @@
+         return at
+ 
+ 
+-    def sendMessage(self, msg):
++    def sendMessage(self, msg, asDraft = False, _extraParams = None):
+         """
+ 
+           `msg` -- `GmailComposedMessage` instance.
++
++          `_extraParams` -- Dictionary containing additional parameters
++                            to put into POST message. (Not officially
++                            for external use, more to make feature
++                            additional a little easier to play with.)
+         
++        Note: Now returns `GmailMessageStub` instance with populated
++              `id` (and `_account`) fields on success or None on failure.
++
+         """
+-        params = {U_VIEW: U_SENDMAIL_VIEW,
++        # TODO: Handle drafts separately?
++        params = {U_VIEW: [U_SENDMAIL_VIEW, U_SAVEDRAFT_VIEW][asDraft],
+                   U_REFERENCED_MSG: "",
+                   U_THREAD: "",
+                   U_DRAFT_MSG: "",
+@@ -479,6 +503,9 @@
+                   "msgbody": msg.body,
+                   }
+ 
++        if _extraParams:
++            params.update(_extraParams)
++
+         # Amongst other things, I used the following post to work out this:
+         # <http://groups.google.com/groups?
+         #  selm=mailman.1047080233.20095.python-list%40python.org>
+@@ -525,8 +552,15 @@
+ 
+         items = self._parsePage(req)
+ 
+-        # TODO: Check composeid & store new thread id?
+-        return (items[D_SENDMAIL_RESULT][SM_SUCCESS] == 1)
++        # TODO: Check composeid?
++        result = None
++        resultInfo = items[D_SENDMAIL_RESULT]
++        
++        if resultInfo[SM_SUCCESS]:
++            result = GmailMessageStub(id = resultInfo[SM_NEWTHREADID],
++                                      _account = self)
++            
++        return result
+ 
+ 
+     def trashMessage(self, msg):
+@@ -545,8 +579,8 @@
+         # TODO: Mark as trashed on success?
+         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+ 
+-        
+-    def trashThread(self, thread):
++
++    def _doThreadAction(self, actionId, thread):
+         """
+         """
+         # TODO: Decide if we should make this a method of `GmailThread`.
+@@ -554,18 +588,111 @@
+         params = {
+             U_SEARCH: U_ALL_SEARCH, #TODO:Check this search value always works.
+             U_VIEW: U_UPDATE_VIEW,
+-            U_ACTION: U_MARKTRASH_ACTION,
++            U_ACTION: actionId,
+             U_ACTION_THREAD: thread.id,
+             U_ACTION_TOKEN: self._getActionToken(),
+             }
+ 
+         items = self._parsePage(_buildURL(**params))
+ 
+-        # TODO: Mark as trashed on success?
+         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
++        
++        
++    def trashThread(self, thread):
++        """
++        """
++        # TODO: Decide if we should make this a method of `GmailThread`.
++        # TODO: Should we check we have been given a `GmailThread` instance?
+ 
++        result = self._doThreadAction(U_MARKTRASH_ACTION, thread)
+         
++        # TODO: Mark as trashed on success?
++        return result
++
++
++    def _createUpdateRequest(self, actionId): #extraData):
++        """
++        Helper method to create a Request instance for an update (view)
++        action.
++
++        Returns populated `Request` instance.
++        """
++        params = {
++            U_VIEW: U_UPDATE_VIEW,
++            }
++
++        data = {
++            U_ACTION: actionId,
++            U_ACTION_TOKEN: self._getActionToken(),
++            }
++
++        #data.update(extraData)
++
++        req = urllib2.Request(_buildURL(**params),
++                              data = urllib.urlencode(data))
++
++        return req
++
++
++    # TODO: Extract additional common code from handling of labels?
++    def createLabel(self, labelName):
++        """
++        """
++        req = self._createUpdateRequest(U_CREATECATEGORY_ACTION + labelName)
++
++        # Note: Label name cache is updated by this call as well. (Handy!)
++        items = self._parsePage(req)
++
++        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
++
++
++    def deleteLabel(self, labelName):
++        """
++        """
++        # TODO: Check labelName exits?
++        req = self._createUpdateRequest(U_DELETECATEGORY_ACTION + labelName)
++
++        # Note: Label name cache is updated by this call as well. (Handy!)
++        items = self._parsePage(req)
++
++        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
++
++
++    def renameLabel(self, oldLabelName, newLabelName):
++        """
++        """
++        # TODO: Check oldLabelName exits?
++        req = self._createUpdateRequest("%s%s^%s" % (U_RENAMECATEGORY_ACTION,
++                                                   oldLabelName, newLabelName))
++
++        # Note: Label name cache is updated by this call as well. (Handy!)
++        items = self._parsePage(req)
++
++        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
++
++
++    def storeFile(self, filename, label = None):
++        """
++        """
++        # TODO: Handle files larger than single attachment size.
++        # TODO: Allow file data objects to be supplied?
++        FILE_STORE_VERSION = "FSV_01"
++        FILE_STORE_SUBJECT_TEMPLATE = "%s %s" % (FILE_STORE_VERSION, "%s")
++
++        subject = FILE_STORE_SUBJECT_TEMPLATE % os.path.basename(filename)
+ 
++        msg = GmailComposedMessage(to="", subject=subject, body="",
++                                   filenames=[filename])
++
++        draftMsg = self.sendMessage(msg, asDraft = True)
++
++        if draftMsg and label:
++            draftMsg.addLabel(label)
++
++        return draftMsg
++
++        
++        
+ def _splitBunches(infoItems):
+     """
+ 
+@@ -613,8 +740,61 @@
+         return len(self._threads)
+ 
+ 
++from cPickle import load, dump
+ 
+-class GmailThread:
++class GmailSessionState:
++    """
++    """
++
++    def __init__(self, account = None, filename = ""):
++        """
++        """
++        if account:
++            self.state = (account.name, account._cookieJar)
++        elif filename:
++            self.state = load(open(filename, "rb"))
++        else:
++            raise ValueError("GmailSessionState must be instantiated with " \
++                             "either GmailAccount object or filename.")
++
++
++    def save(self, filename):
++        """
++        """
++        dump(self.state, open(filename, "wb"), -1)
++
++
++class _LabelHandlerMixin(object):
++    """
++
++    Note: Because a message id can be used as a thread id this works for
++          messages as well as threads.
++    """
++
++    def addLabel(self, labelName):
++        """
++        """
++        # Note: It appears this also automatically creates new labels.
++        result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
++                                               self)
++        # TODO: Update list of attached labels?
++        return result
++
++
++    def removeLabel(self, labelName):
++        """
++        """
++        # TODO: Check label is already attached?
++        # Note: An error is not generated if the label is not already attached.
++        result = \
++               self._account._doThreadAction(U_REMOVECATEGORY_ACTION+labelName,
++                                             self)
++        # TODO: Update list of attached labels?
++        return result
++    
++
++
++class GmailThread(_LabelHandlerMixin):
+     """
+ 
+ 
+@@ -636,6 +816,9 @@
+         self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
+         self.subject = threadInfo[T_SUBJECT_HTML]
+ 
++        self.snippet = threadInfo[T_SNIPPET_HTML]
++        #self.extraSummary = threadInfo[T_EXTRA_SNIPPET] #TODO: What is this?
++
+         # TODO: Store other info?
+         # Extract number of messages in thread/conversation.
+ 
+@@ -654,7 +837,6 @@
+         self._messages = []
+ 
+         
+-
+     def __len__(self):
+         """
+         """
+@@ -680,25 +862,59 @@
+                                                  th = thread.id,
+                                                  q = "in:anywhere")
+ 
++        result = []
+         # TODO: Handle this better?
+-        msgsInfo = items[D_MSGINFO]
++        # Note: This handles both draft & non-draft messages in a thread...
++        for key, isDraft in [(D_MSGINFO, False), (D_DRAFTINFO, True)]:
++            try:
++                msgsInfo = items[key]
++            except KeyError:
++                # No messages of this type (e.g. draft or non-draft)
++                continue
++            else:
++                # TODO: Handle special case of only 1 message in thread better?
++                if type(msgsInfo) != type([]):
++                    msgsInfo = [msgsInfo]
+ 
+-        # TODO: Handle special case of only one message in thread better?
+-        if type(msgsInfo) != type([]):
+-            msgsInfo = [msgsInfo]
++                result += [GmailMessage(thread, msg, isDraft = isDraft)
++                           for msg in msgsInfo]
+ 
+-        return [GmailMessage(thread, msg)
+-                for msg in msgsInfo]
++        return result
++
++
++    # TODO: Add property to retrieve list of labels for this message.
++    
++
++
++class GmailMessageStub(_LabelHandlerMixin):
++    """
++
++    Intended to be used where not all message information is known/required.
++
++    NOTE: This may go away.
++    """
+ 
++    # TODO: Provide way to convert this to a full `GmailMessage` instance
++    #       or allow `GmailMessage` to be created without all info?
++
++    def __init__(self, id = None, _account = None):
++        """
++        """
++        self.id = id
++        self._account = _account
++    
+ 
+         
+ class GmailMessage(object):
+     """
+     """
+     
+-    def __init__(self, parent, msgData):
++    def __init__(self, parent, msgData, isDraft = False):
+         """
++
++        Note: `msgData` can be from either D_MSGINFO or D_DRAFTINFO.
+         """
++        # TODO: Automatically detect if it's a draft or not?
+         # TODO Handle this better?
+         self._parent = parent
+         self._account = self._parent._account
+@@ -712,6 +928,9 @@
+ 
+         # TODO: Populate additional fields & cache...(?)
+ 
++        # TODO: Handle body differently if it's from a draft?
++        self.isDraft = isDraft
++        
+         self._source = None
+ 
+ 
+@@ -720,6 +939,8 @@
+         """
+         if not self._source:
+             # TODO: Do this more nicely...?
++            # TODO: Strip initial white space & fix up last line ending
++            #       to make it legal as per RFC?
+             self._source = self._account.getRawMessage(self.id)
+ 
+         return self._source
+@@ -761,6 +982,23 @@
+     content = property(_getContent, doc = "")
+ 
+ 
++    def _getFullId(self):
++        """
++
++        Returns the "full path"/"full id" of the attachment. (Used
++        to refer to the file when forwarding.)
++
++        The id is of the form: "<thread_id>_<msg_id>_<attachment_id>"
++        
++        """
++        return "%s_%s_%s" % (self._parent._parent.id,
++                             self._parent.id,
++                             self.id)
++
++    _fullId = property(_getFullId, doc = "")
++
++
++
+ class GmailComposedMessage:
+     """
+     """
