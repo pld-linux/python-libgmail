@@ -11,6 +11,7 @@ Source0:	http://dl.sourceforge.net/%{module}/%{module}-%{version}.tgz
 # Source0-md5:	6bfd82f39b959a6e92fa73fa19ed4eba
 Patch0:		%{name}-path.patch
 Patch1:		%{name}-cvs.patch
+Patch2:		%{name}-redirect.patch
 URL:		http://libgmail.sourceforge.net/
 %pyrequires_eq	python-modules
 BuildArch:	noarch
@@ -28,6 +29,7 @@ programach pisanych w Pythonie.
 %setup -q -n %{module}-%{version}
 %patch0 -p0
 %patch1 -p1
+%patch2 -p1
 
 %build
 %{py_comp} .
