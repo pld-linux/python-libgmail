@@ -3,12 +3,12 @@
 Summary:	libgmail - Python binding for Google's Gmail service
 Summary(pl):	libgmail - wi±zania Pythona do us³ugi Google Gmail
 Name:		python-%{module}
-Version:	0.1.3.3
+Version:	0.1.4
 Release:	1
 License:	GPL v2
 Group:		Development/Languages/Python
 Source0:	http://dl.sourceforge.net/%{module}/%{module}-%{version}.tar.gz
-# Source0-md5:	ebef72abd4fbccdad9291378ac625d9a
+# Source0-md5:	807799f484544da1b8fef9caec39f675
 URL:		http://libgmail.sourceforge.net/
 BuildRequires:	rpm-pythonprov
 %pyrequires_eq	python-modules
@@ -28,7 +28,6 @@ programach pisanych w Pythonie.
 
 %build
 %{py_comp} .
-%{py_comp} lgconstants.py
 %{py_ocomp} .
 
 %install
