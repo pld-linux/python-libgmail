@@ -1,7 +1,7 @@
 %define 	module	libgmail
 
 Summary:	libgmail - Python binding for Google's Gmail service
-Summary(pl):	libgmail - wi±zania Pythona do us³ugi Google Gmail
+Summary(pl.UTF-8):   libgmail - wiÄ…zania Pythona do usÅ‚ugi Google Gmail
 Name:		python-%{module}
 Version:	0.1.5.1
 Release:	1
@@ -19,8 +19,8 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 The libgmail project is a pure Python binding to provide access to
 Google's Gmail web-mail service.
 
-%description -l pl
-Projekt libgmail umo¿liwia uzyskanie dostêpu do us³ugi Google Gmail w
+%description -l pl.UTF-8
+Projekt libgmail umoÅ¼liwia uzyskanie dostÄ™pu do usÅ‚ugi Google Gmail w
 programach pisanych w Pythonie.
 
 %prep
