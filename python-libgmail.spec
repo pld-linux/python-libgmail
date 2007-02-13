@@ -1,7 +1,7 @@
 %define 	module	libgmail
 
 Summary:	libgmail - Python binding for Google's Gmail service
-Summary(pl.UTF-8):   libgmail - wiązania Pythona do usługi Google Gmail
+Summary(pl.UTF-8):	libgmail - wiązania Pythona do usługi Google Gmail
 Name:		python-%{module}
 Version:	0.1.5.1
 Release:	1
